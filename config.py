@@ -21,3 +21,6 @@ USER_AGENT = "WebPulseBot/0.1 (course project)"
 REQUEST_TIMEOUT = 10        # seconds
 MAX_PAGES = 200             # stop after this many successfully fetched pages
 MAX_DEPTH = 4               # seed = depth 0
+CONCURRENCY = 50            # max simultaneous requests (asyncio Semaphore size)
+MAX_RETRIES = 3             # extra attempts after the first one fails
+BACKOFF_BASE = 0.5          # seconds; delay = BACKOFF_BASE * 2**attempt + jitter
