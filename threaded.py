@@ -24,6 +24,7 @@ import argparse
 import logging
 import threading
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from urllib import robotparser
 from urllib.parse import urlparse
@@ -64,8 +65,13 @@ def crawl(
     max_pages: int,
     max_depth: int,
     workers: int = DEFAULT_WORKERS,
+    on_page: Callable[[dict], None] | None = None,
 ) -> tuple[list[dict], dict]:
-    """Crawl with a thread pool. Returns (parsed_pages, stats)."""
+    """Crawl with a thread pool. Returns (parsed_pages, stats).
+
+    on_page, if given, is called from the main thread with every accepted
+    page (used to stream pages to the storage thread).
+    """
     visited: set[str] = set(seeds)
     robots_cache: dict[str, robotparser.RobotFileParser] = {}
 
@@ -119,6 +125,8 @@ def crawl(
 
                 results.append(page)
                 stats["pages"] += 1
+                if on_page:
+                    on_page(page)
 
                 if depth < max_depth:
                     host = urlparse(url).netloc
