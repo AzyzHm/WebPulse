@@ -24,3 +24,6 @@ MAX_DEPTH = 4               # seed = depth 0
 CONCURRENCY = 50            # max simultaneous requests (asyncio Semaphore size)
 MAX_RETRIES = 3             # extra attempts after the first one fails
 BACKOFF_BASE = 0.5          # seconds; delay = BACKOFF_BASE * 2**attempt + jitter
+
+# --- Storage -----------------------------------------------------------------
+DB_PATH = "webpulse.db"     # SQLite file written by the storage thread
