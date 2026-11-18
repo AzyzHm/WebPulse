@@ -26,6 +26,7 @@ import asyncio
 import logging
 import os
 import time
+from collections.abc import Callable
 from concurrent.futures import ProcessPoolExecutor
 from urllib import robotparser
 from urllib.parse import urlparse
@@ -74,8 +75,13 @@ async def crawl_async(
     max_depth: int,
     pool: ProcessPoolExecutor,
     concurrency: int = config.CONCURRENCY,
+    on_page: Callable[[dict], None] | None = None,
 ) -> tuple[list[dict], dict]:
-    """Crawl with asyncio + a process pool. Returns (parsed_pages, stats)."""
+    """Crawl with asyncio + a process pool. Returns (parsed_pages, stats).
+
+    on_page, if given, is called from the event loop with every accepted page.
+    It must not block (storage.put() only appends to a queue).
+    """
     visited: set[str] = set(seeds)
     robots_cache: dict[str, robotparser.RobotFileParser] = {}
 
@@ -122,6 +128,8 @@ async def crawl_async(
 
                 results.append(outcome)
                 stats["pages"] += 1
+                if on_page:
+                    on_page(outcome)
 
                 if depth < max_depth:
                     host = urlparse(url).netloc
@@ -143,6 +151,7 @@ def crawl(
     max_depth: int,
     concurrency: int = config.CONCURRENCY,
     processes: int = DEFAULT_PROCESSES,
+    on_page: Callable[[dict], None] | None = None,
 ) -> tuple[list[dict], dict]:
     """Synchronous wrapper so callers (CLI, benchmark) need no event loop."""
     t0 = time.perf_counter()
@@ -150,7 +159,7 @@ def crawl(
         _warm_up(pool, processes)
         startup = time.perf_counter() - t0
         results, stats = asyncio.run(
-            crawl_async(seeds, max_pages, max_depth, pool, concurrency)
+            crawl_async(seeds, max_pages, max_depth, pool, concurrency, on_page)
         )
     stats["pool_startup"] = startup
     return results, stats
