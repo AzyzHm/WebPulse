@@ -12,6 +12,7 @@ import argparse
 import logging
 import time
 from collections import deque
+from collections.abc import Callable
 from urllib import robotparser
 from urllib.parse import urlparse
 
@@ -40,8 +41,17 @@ def load_robots(session: requests.Session, url: str) -> robotparser.RobotFilePar
     return rp
 
 
-def crawl(seeds: list[str], max_pages: int, max_depth: int) -> tuple[list[dict], dict]:
-    """Crawl sequentially. Returns (parsed_pages, stats)."""
+def crawl(
+    seeds: list[str],
+    max_pages: int,
+    max_depth: int,
+    on_page: Callable[[dict], None] | None = None,
+) -> tuple[list[dict], dict]:
+    """Crawl sequentially. Returns (parsed_pages, stats).
+
+    on_page, if given, is called with every parsed page as soon as it is
+    accepted (used to stream pages to the storage thread).
+    """
     session = requests.Session()
     session.headers["User-Agent"] = config.USER_AGENT
 
@@ -75,6 +85,8 @@ def crawl(seeds: list[str], max_pages: int, max_depth: int) -> tuple[list[dict],
         page = parse_page(resp.text, url)
         results.append(page)
         stats["pages"] += 1
+        if on_page:
+            on_page(page)
 
         if depth < max_depth:
             for link in page["links"]:
